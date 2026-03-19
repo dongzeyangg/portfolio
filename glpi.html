@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Installer GLPI — Guide simplifié</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e1a; --bg2: #0f1525; --bg3: #141c30;
+    --accent: #1f7bc8; --accent2: #2fa0f0; --accent3: #7dd3fc;
+    --gold: #ffd166; --green: #06d6a0; --red: #ef476f; --purple: #b388ff;
+    --orange: #fb923c;
+    --text: #e8edf8; --text2: #9aafc8; --text3: #5a7299;
+    --border: rgba(31,123,200,0.22); --glow: rgba(31,123,200,0.1);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'DM Mono', monospace; font-size: 14px;
+    line-height: 1.7; overflow-x: hidden;
+  }
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(31,123,200,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(31,123,200,0.025) 1px, transparent 1px);
+    background-size: 40px 40px; pointer-events: none; z-index: 0;
+  }
+
+  .progress-wrap { position: fixed; top: 0; left: 0; right: 0; height: 3px; background: var(--bg2); z-index: 100; }
+  .progress-bar { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent3)); width: 0%; box-shadow: 0 0 10px var(--accent); transition: width 0.1s; }
+
+  /* HEADER */
+  header { position: relative; padding: 70px 40px 50px; text-align: center; z-index: 1; }
+  header::before {
+    content: ''; position: absolute; top: -80px; left: 50%; transform: translateX(-50%);
+    width: 520px; height: 520px;
+    background: radial-gradient(circle, rgba(31,123,200,0.13) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  /* GLPI logo SVG */
+  .glpi-logo {
+    display: inline-block; margin-bottom: 20px;
+    animation: fadeUp 0.5s ease-out both;
+  }
+  .glpi-logo svg { width: 54px; height: 54px; filter: drop-shadow(0 0 14px rgba(31,123,200,0.7)); }
+
+  .badge {
+    display: inline-block; background: rgba(31,123,200,0.15); border: 1px solid var(--accent);
+    color: var(--accent3); font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
+    padding: 5px 14px; border-radius: 2px; margin-bottom: 16px; animation: fadeUp 0.5s 0.1s ease-out both;
+  }
+  h1 {
+    font-family: 'Syne', sans-serif; font-size: clamp(26px, 4vw, 44px);
+    font-weight: 800; letter-spacing: -1px; animation: fadeUp 0.5s 0.2s ease-out both; margin-bottom: 12px;
+  }
+  h1 span { background: linear-gradient(135deg, var(--accent), var(--accent3)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .subtitle { color: var(--text2); font-size: 13px; animation: fadeUp 0.5s 0.3s ease-out both; }
+
+  /* TABS */
+  .tabs {
+    display: flex; gap: 8px; justify-content: center;
+    margin-bottom: 32px; animation: fadeUp 0.5s 0.4s ease-out both;
+    position: relative; z-index: 1; flex-wrap: wrap;
+  }
+  .tab {
+    padding: 8px 22px; border-radius: 4px; font-family: 'Syne', sans-serif;
+    font-size: 12px; font-weight: 700; cursor: pointer;
+    border: 1px solid var(--border); background: var(--bg2);
+    color: var(--text2); transition: all 0.2s; user-select: none;
+  }
+  .tab:hover { border-color: var(--accent); color: var(--accent3); }
+  .tab.active { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 0 4px 16px rgba(31,123,200,0.4); }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* CONTAINER */
+  .container { max-width: 680px; margin: 0 auto; padding: 0 24px 80px; position: relative; z-index: 1; }
+
+  .version-tag {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 4px; padding: 8px 16px; margin-bottom: 28px;
+    font-size: 12px; color: var(--text2);
+  }
+  .version-tag .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px rgba(6,214,160,0.6); animation: blink 2s infinite; }
+  @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
+  .version-tag strong { color: var(--text); }
+
+  /* STEP */
+  .step { margin-bottom: 28px; opacity: 0; transform: translateY(20px); transition: opacity 0.4s, transform 0.4s; }
+  .step.visible { opacity: 1; transform: translateY(0); }
+
+  .step-header { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+  .step-num {
+    min-width: 42px; height: 42px; border-radius: 4px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Syne', sans-serif; font-weight: 800; font-size: 16px; color: #fff;
+    box-shadow: 0 4px 16px rgba(31,123,200,0.4); flex-shrink: 0;
+  }
+  .step h2 { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700; }
+  .step h2 small { display: block; font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text3); letter-spacing: 2px; text-transform: uppercase; }
+  .step-body { background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+
+  /* LISTES */
+  .items { list-style: none; }
+  .items li {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 13px 20px; border-bottom: 1px solid rgba(255,255,255,0.04);
+    color: var(--text2); font-size: 13px; transition: background 0.2s;
+  }
+  .items li:last-child { border-bottom: none; }
+  .items li:hover { background: var(--glow); }
+  .items li .icon { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+  .items li strong { color: var(--text); }
+
+  .steps-list { list-style: none; }
+  .steps-list li {
+    display: flex; gap: 14px; padding: 13px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    color: var(--text2); font-size: 13px; align-items: flex-start; transition: background 0.2s;
+  }
+  .steps-list li:last-child { border-bottom: none; }
+  .steps-list li:hover { background: var(--glow); }
+  .sn {
+    min-width: 24px; height: 24px; background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 3px; display: flex; align-items: center; justify-content: center;
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 12px; color: var(--accent3); flex-shrink: 0;
+  }
+  .steps-list li strong { color: var(--text); display: block; }
+
+  /* ALERTES */
+  .alert {
+    display: flex; gap: 12px; align-items: flex-start;
+    padding: 13px 20px; border-top: 1px solid rgba(255,255,255,0.04); font-size: 12px;
+  }
+  .alert-icon { font-size: 15px; flex-shrink: 0; }
+  .alert p { color: var(--text2); }
+  .alert strong { color: var(--text); }
+  .alert.warn   { background: rgba(255,209,102,0.06); border-left: 3px solid var(--gold);   } .alert.warn   .alert-icon { color: var(--gold);   }
+  .alert.info   { background: rgba(125,211,252,0.06); border-left: 3px solid var(--accent3);} .alert.info   .alert-icon { color: var(--accent3);}
+  .alert.ok     { background: rgba(6,214,160,0.06);   border-left: 3px solid var(--green);  } .alert.ok     .alert-icon { color: var(--green);  }
+  .alert.purple { background: rgba(179,136,255,0.06); border-left: 3px solid var(--purple); } .alert.purple .alert-icon { color: var(--purple); }
+  .alert.danger { background: rgba(239,71,111,0.06);  border-left: 3px solid var(--red);    } .alert.danger .alert-icon { color: var(--red);    }
+  .alert.orange { background: rgba(251,146,60,0.06);  border-left: 3px solid var(--orange); } .alert.orange .alert-icon { color: var(--orange); }
+
+  /* CODE */
+  .code-block {
+    background: #060a14; border-top: 1px solid var(--border);
+    padding: 16px 20px; font-size: 12px; color: #8be9fd;
+    position: relative; overflow-x: auto;
+  }
+  .code-block .prompt { color: var(--accent2); user-select: none; margin-right: 6px; }
+  .code-block .root   { color: var(--accent);  user-select: none; margin-right: 6px; }
+  .code-block .line { display: block; line-height: 2; }
+  .code-block .comment { color: var(--text3); }
+  .code-block .str { color: var(--green); }
+  .code-block .kw  { color: var(--purple); }
+  .code-label { position: absolute; top: 8px; right: 12px; font-size: 10px; color: var(--text3); letter-spacing: 1px; text-transform: uppercase; }
+
+  /* SQL block */
+  .sql-block {
+    background: #060a14; border-top: 1px solid var(--border);
+    padding: 16px 20px; font-size: 12px;
+    position: relative; overflow-x: auto; line-height: 2;
+  }
+  .sql-kw  { color: var(--purple); }
+  .sql-str { color: var(--green); }
+  .sql-val { color: var(--gold); }
+  .sql-comment { color: var(--text3); }
+
+  code { background: rgba(31,123,200,0.14); color: var(--accent3); padding: 1px 6px; border-radius: 3px; font-size: 12px; }
+
+  /* STACK CARDS */
+  .stack { display: grid; grid-template-columns: repeat(4,1fr); gap: 1px; background: var(--border); }
+  .stack-item { background: var(--bg2); padding: 16px 12px; text-align: center; transition: background 0.2s; }
+  .stack-item:hover { background: var(--bg3); }
+  .stack-item .s-icon { font-size: 22px; margin-bottom: 6px; display: block; }
+  .stack-item h3 { font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 700; color: var(--text); }
+  .stack-item p  { font-size: 10px; color: var(--text2); margin-top: 3px; }
+
+  footer { text-align: center; padding: 32px; border-top: 1px solid var(--border); color: var(--text3); font-size: 11px; letter-spacing: 1px; position: relative; z-index: 1; }
+  footer a { color: var(--accent2); text-decoration: none; }
+
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+  @media (max-width: 500px) { .stack { grid-template-columns: repeat(2,1fr); } header { padding: 50px 20px 36px; } }
+</style>
+</head>
+<body>
+
+<div class="progress-wrap"><div class="progress-bar" id="pb"></div></div>
+
+<header>
+  <div class="glpi-logo">
+    <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <!-- Ticket stylisé -->
+      <rect x="12" y="20" width="76" height="55" rx="6" fill="none" stroke="#1f7bc8" stroke-width="4"/>
+      <line x1="12" y1="40" x2="88" y2="40" stroke="#2fa0f0" stroke-width="2.5"/>
+      <circle cx="12" cy="40" r="6" fill="#0a0e1a" stroke="#2fa0f0" stroke-width="2"/>
+      <circle cx="88" cy="40" r="6" fill="#0a0e1a" stroke="#2fa0f0" stroke-width="2"/>
+      <!-- Texte stylisé -->
+      <rect x="22" y="50" width="30" height="3" rx="1.5" fill="#7dd3fc" opacity="0.8"/>
+      <rect x="22" y="58" width="20" height="3" rx="1.5" fill="#2fa0f0" opacity="0.5"/>
+      <!-- Priorité -->
+      <rect x="62" y="48" width="18" height="16" rx="3" fill="#1f7bc8" opacity="0.4"/>
+      <rect x="65" y="51" width="12" height="3" rx="1" fill="#7dd3fc"/>
+      <rect x="65" y="57" width="8" height="3" rx="1" fill="#7dd3fc" opacity="0.6"/>
+      <!-- Point haut -->
+      <circle cx="50" cy="14" r="4" fill="#2fa0f0" opacity="0.7"/>
+    </svg>
+  </div>
+  <div class="badge">Guide simplifié</div>
+  <h1>Installer <span>GLPI</span></h1>
+  <p class="subtitle">Helpdesk &amp; ITSM open source — sur Debian 12 / Ubuntu.</p>
+</header>
+
+<div class="container">
+
+  <!-- TABS -->
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('stack')">Prérequis LAMP</div>
+    <div class="tab" onclick="switchTab('glpi')">Installer GLPI</div>
+    <div class="tab" onclick="switchTab('config')">Configuration</div>
+  </div>
+
+  <!-- ===== LAMP STACK ===== -->
+  <div class="panel active" id="panel-stack">
+
+    <div class="version-tag">
+      <span class="dot"></span>
+      <strong>GLPI 10.x</strong> — PHP 8.1+ · MariaDB 10.6+ · Apache2
+    </div>
+
+    <div class="step">
+      <div class="step-header"><div class="step-num">01</div><h2>La stack LAMP nécessaire<small>Requirements</small></h2></div>
+      <div class="step-body">
+        <div class="stack">
+          <div class="stack-item">
+            <span class="s-icon">🐧</span>
+            <h3>Linux</h3>
+            <p>Debian 12 / Ubuntu 22.04</p>
+          </div>
+          <div class="stack-item">
+            <span class="s-icon">🌐</span>
+            <h3>Apache2</h3>
+            <p>Serveur web</p>
+          </div>
+          <div class="stack-item">
+            <span class="s-icon">🗄️</span>
+            <h3>MariaDB</h3>
+            <p>Base de données</p>
+          </div>
+          <div class="stack-item">
+            <span class="s-icon">🐘</span>
+            <h3>PHP 8.2</h3>
+            <p>+ extensions requises</p>
+          </div>
+        </div>
+        <div class="alert info">
+          <span class="alert-icon">💡</span>
+          <p>GLPI nécessite plusieurs <strong>extensions PHP</strong> spécifiques. Installez-les toutes en une seule commande ci-dessous.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header"><div class="step-num">02</div><h2>Installer Apache2 &amp; PHP<small>Web Server</small></h2></div>
+      <div class="step-body">
+        <div class="code-block">
+          <span class="code-label">Terminal</span>
+          <span class="line"><span class="comment"># Mettre à jour le système</span></span>
+          <span class="line"><span class="root">#</span>apt update && apt upgrade -y</span>
+          <span class="line"> </span>
+          <span class="line"><span class="comment"># Installer Apache2</span></span>
+          <span class="line"><span class="root">#</span>apt install apache2 -y</span>
+          <span class="line"> </span>
+          <span class="line"><span class="comment"># Installer PHP 8.2 et toutes les extensions requises par GLPI</span></span>
+          <span class="line"><span class="root">#</span>apt install php8.2 php8.2-mysql php8.2-xml php8.2-curl \</span>
+          <span class="line">&nbsp;&nbsp;php8.2-gd php8.2-mbstring php8.2-intl php8.2-zip \</span>
+          <span class="line">&nbsp;&nbsp;php8.2-bz2 php8.2-ldap php8.2-opcache \</span>
+          <span class="line">&nbsp;&nbsp;libapache2-mod-php8.2 -y</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header"><div class="step-num">03</div><h2>Installer MariaDB<small>Database</small></h2></div>
+      <div class="step-body">
+        <div class="code-block">
+          <span class="code-label">Terminal</span>
+          <span class="line"><span class="comment"># Installer MariaDB</span></span>
+          <span class="line"><span class="root">#</span>apt install mariadb-server -y</span>
+          <span class="line"> </span>
+          <span class="line"><span class="comment"># Sécuriser l'installation (suivre les étapes interactives)</span></span>
+          <span class="line"><span class="root">#</span>mysql_secure_installation</span>
+        </div>
+        <div class="alert warn">
+          <span class="alert-icon">⚠️</span>
+          <p>Lors de <code>mysql_secure_installation</code> : définissez un <strong>mot de passe root</strong> fort, supprimez les utilisateurs anonymes et désactivez l'accès root à distance.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header"><div class="step-num">04</div><h2>Créer la base de données GLPI<small>Database Setup</small></h2></div>
+      <div class="step-body">
+        <div class="code-block">
+          <span class="code-label">Terminal</span>
+          <span class="line"><span class="comment"># Se connecter à MariaDB</span></span>
+          <span class="line"><span class="root">#</span>mysql -u root -p</span>
+        </div>
+        <div class="sql-block">
+          <span class="sql-comment">-- Créer la base de données</span><br>
+          <span class="sql-kw">CREATE DATABASE</span> <span class="sql-val">glpi</span> <span class="sql-kw">CHARACTER SET</span> <span class="sql-str">utf8mb4</span> <span class="sql-kw">COLLATE</span> <span class="sql-str">utf8mb4_unicode_ci</span>;<br><br>
+          <span class="sql-comment">-- Créer l'utilisateur GLPI</span><br>
+          <span class="sql-kw">CREATE USER</span> <span class="sql-str">'glpi'</span>@<span class="sql-str">'localhost'</span> <span class="sql-kw">IDENTIFIED BY</span> <span class="sql-str">'MotDePasseFort!'</span>;<br><br>
+          <span class="sql-comment">-- Accorder les droits</span><br>
+          <span class="sql-kw">GRANT ALL PRIVILEGES ON</span> <span class="sql-val">glpi</span>.* <span class="sql-kw">TO</span> <span class="sql-str">'glpi'</span>@<span class="sql-str">'localhost'</span>;<br><br>
+          <span class="sql-kw">FLUSH PRIVILEGES;</span><br>
+          <span class="sql-kw">EXIT;</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ===== GLPI INSTALL ===== -->
+  <div class="panel" id="panel-glpi">
+
+    <div class="version-tag">
+      <span class="dot"></span>
+      <strong>GLPI 10.x</strong> — Téléchargement &amp; déploiement
+    </div>
+
+    <div class="step">
+      <div class="step-header"><div class="step-num">01</div><h2>Télécharger GLPI<small>Download</small></h2></div>
+      <div class="step-body">
+        <div class="code-block">
+          <span class="code-label">Terminal</span>
+          <span class="line"><span class="comment"># Aller dans le dossier temporaire</span></span>
+          <span class="line"><span class="root">#</span>cd /tmp</span>
+          <span class="line"> </span>
+          <span class="line"><span class="comment"># Télécharger la dernière version de GLPI</span></span>
+          <span class="line"><span class="root">#</span>wget https://github.com/glpi-project/glpi/releases/download/10.0.16/glpi-10.0.16.tgz</span>
+          <span class="line"> </span>
+          <span class="line"><span class="comment"># Extraire l'archive</span></span>
+          <span class="line"><span class="root">#</span>tar -xzvf glpi-10.0.16.tgz -C /var/www/html/</span>
+        </div>
+        <div class="alert info">
+          <span class="alert-icon">💡</span>
+          <p>Vérifiez la <strong>dernière version disponible</strong> sur <code>github.com/glpi-project/glpi/releases</code> et adaptez le numéro de version dans la commande.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header"><div class="step-num">02</div><h2>Permissions &amp; configuration Apache<small>Permissions</small></h2></div>
+      <div class="step-body">
+        <div class="code-block">
+          <span class="code-label">Terminal</span>
+          <span class="line"><span class="comment"># Attribuer les droits à Apache</span></span>
+          <span class="line"><span class="root">#</span>chown -R www-data:www-data /var/www/html/glpi</span>
+          <span class="line"><span class="root">#</span>chmod -R 755 /var/www/html/glpi</span>
+          <span class="line"> </span>
+          <span class="line"><span class="comment"># Créer le VirtualHost Apache pour GLPI</span></span>
+          <span class="line"><span class="root">#</span>nano /etc/apache2/sites-available/glpi.conf</span>
+        </div>
+        <div class="sql-block" style="font-family:'DM Mono',monospace; font-size:12px; line-height:1.9;">
+          <span style="color:var(--accent3)">&lt;VirtualHost</span> <span style="color:var(--green)">*:80</span><span style="color:var(--accent3)">&gt;</span><br>
+          &nbsp;&nbsp;<span style="color:var(--gold)">ServerName</span> &nbsp;&nbsp;&nbsp;<span style="color:var(--green)">glpi.mondomaine.fr</span><br>
+          &nbsp;&nbsp;<span style="color:var(--gold)">DocumentRoot</span> <span style="color:var(--green)">/var/www/html/glpi/public</span><br>
+          &nbsp;&nbsp;<span style="color:var(--accent3)">&lt;Directory</span> <span style="color:var(--green)">/var/www/html/glpi/public</span><span style="color:var(--accent3)">&gt;</span><br>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span style="color:var(--gold)">Options</span> -Indexes<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span style="color:var(--gold)">AllowOverride</span> All<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span style="color:var(--gold)">Require</span> all granted<br>
+          &nbsp;&nbsp;<span style="color:var(--accent3)">&lt;/Directory&gt;</span><br>
+          <span style="color:var(--accent3)">&lt;/VirtualHost&gt;</span>
+        </div>
+        <div class="code-block">
+          <span class="code-label">Terminal</span>
+          <span class="line"><span class="comment"># Activer le module rewrite et le site</span></span>
+          <span class="line"><span class="root">#</span>a2enmod rewrite</span>
+          <span class="line"><span class="root">#</span>a2ensite glpi.conf</span>
+          <span class="line"><span class="root">#</span>systemctl restart apache2</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header"><div class="step-num">03</div><h2>Installation via le navigateur<small>Web Installer</small></h2></div>
+      <div class="step-body">
+        <ol class="steps-list">
+          <li><div class="sn">1</div><span>Ouvrez <code>http://glpi.mondomaine.fr</code> dans un navigateur.</span></li>
+          <li><div class="sn">2</div><span>Choisissez la <strong>langue</strong> et acceptez la licence GPL.</span></li>
+          <li><div class="sn">3</div><span>Cliquez sur <strong>Installer</strong> (pas Mettre à jour).</span></li>
+          <li><div class="sn">4</div><span>Entrez les informations de la base de données : hôte <code>localhost</code>, utilisateur <code>glpi</code>, mot de passe et base <code>glpi</code>.</span></li>
+          <li><div class="sn">5</div><span>Laissez l'installation se terminer et cliquez sur <strong>Continuer</strong>.</span></li>
+        </ol>
+        <div class="alert ok">
+          <span class="alert-icon">✅</span>
+          <p>GLPI est installé ! Connectez-vous avec <strong>glpi / glpi</strong> (admin par défaut). Changez ce mot de passe immédiatement.</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ===== CONFIGURATION ===== -->
+  <div class="panel" id="panel-config">
+
+    <div class="version-tag">
+      <span class="dot"></span>
+      <strong>Post-installation</strong> — Sécurité &amp; premiers réglages
+    </div>
+
+    <div class="step">
+      <div class="step-header"><div class="step-num">01</div><h2>Supprimer le fichier d'installation<small>Security</small></h2></div>
+      <div class="step-body">
+        <div class="code-block">
+          <span class="code-label">Terminal</span>
+          <span class="line"><span class="comment"># OBLIGATOIRE — supprimer install.php après installation</span></span>
+          <span class="line"><span class="root">#</span>rm /var/www/html/glpi/install/install.php</span>
+        </div>
+        <div class="alert danger">
+          <span class="alert-icon">🔐</span>
+          <p>Ne pas supprimer ce fichier expose votre installation GLPI à une <strong>réinstallation non autorisée</strong> par n'importe qui.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header"><div class="step-num">02</div><h2>Changer les mots de passe par défaut<small>Default Accounts</small></h2></div>
+      <div class="step-body">
+        <ul class="items">
+          <li><span class="icon">👤</span><span><strong>glpi / glpi</strong> — compte administrateur principal</span></li>
+          <li><span class="icon">👤</span><span><strong>tech / tech</strong> — compte technicien</span></li>
+          <li><span class="icon">👤</span><span><strong>normal / normal</strong> — compte utilisateur standard</span></li>
+          <li><span class="icon">👤</span><span><strong>post-only / postonly</strong> — compte en libre-service</span></li>
+        </ul>
+        <div class="alert warn">
+          <span class="alert-icon">⚠️</span>
+          <p>Changez <strong>tous ces mots de passe</strong> dès la première connexion via Administration → Utilisateurs.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header"><div class="step-num">03</div><h2>Configurer les tâches automatiques<small>Cron</small></h2></div>
+      <div class="step-body">
+        <div class="code-block">
+          <span class="code-label">Terminal</span>
+          <span class="line"><span class="comment"># Ajouter le cron GLPI (exécution toutes les minutes)</span></span>
+          <span class="line"><span class="root">#</span>crontab -u www-data -e</span>
+        </div>
+        <div class="sql-block" style="font-family:'DM Mono',monospace; font-size:12px;">
+          <span style="color:var(--text3)"># Ajouter cette ligne dans le crontab :</span><br>
+          <span style="color:var(--green)">* * * * *</span> <span style="color:var(--accent3)">/usr/bin/php /var/www/html/glpi/front/cron.php</span> <span style="color:var(--text3)">&amp;>/dev/null</span>
+        </div>
+        <div class="alert info">
+          <span class="alert-icon">💡</span>
+          <p>Le cron est indispensable pour les <strong>notifications e-mail</strong>, la clôture automatique des tickets et les autres tâches planifiées de GLPI.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header"><div class="step-num">04</div><h2>Premiers réglages à faire<small>Quick Setup</small></h2></div>
+      <div class="step-body">
+        <ol class="steps-list">
+          <li><div class="sn">1</div><span><strong>Configuration → Générale</strong> — renseignez le nom, l'URL et le fuseau horaire de votre instance.</span></li>
+          <li><div class="sn">2</div><span><strong>Configuration → Notifications</strong> — configurez le serveur SMTP pour les e-mails.</span></li>
+          <li><div class="sn">3</div><span><strong>Administration → Entités</strong> — créez votre structure organisationnelle (entreprise, sites…).</span></li>
+          <li><div class="sn">4</div><span><strong>Administration → Utilisateurs</strong> — créez les comptes ou configurez l'annuaire LDAP/AD.</span></li>
+          <li><div class="sn">5</div><span><strong>Assistance → Catégories</strong> — créez les catégories de tickets (matériel, logiciel, réseau…).</span></li>
+        </ol>
+        <div class="alert purple">
+          <span class="alert-icon">🚀</span>
+          <p>Pour connecter GLPI à votre <strong>Active Directory</strong>, allez dans Configuration → Annuaires LDAP et renseignez l'IP de votre contrôleur de domaine.</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<footer>
+  <p>GLPI 10.x &nbsp;·&nbsp;
+    <a href="https://glpi-project.org/fr/" target="_blank">Site officiel</a> &nbsp;·&nbsp;
+    <a href="https://github.com/glpi-project/glpi/releases" target="_blank">Releases GitHub</a> &nbsp;·&nbsp;
+    <a href="https://glpi-install.readthedocs.io/" target="_blank">Documentation</a>
+  </p>
+</footer>
+
+<script>
+  window.addEventListener('scroll', () => {
+    const st = document.documentElement.scrollTop;
+    const sh = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+    document.getElementById('pb').style.width = (st / sh * 100) + '%';
+  });
+
+  function switchTab(id) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    event.target.classList.add('active');
+    document.getElementById('panel-' + id).classList.add('active');
+    document.querySelectorAll('#panel-' + id + ' .step').forEach((s, i) => {
+      s.classList.remove('visible');
+      setTimeout(() => s.classList.add('visible'), i * 80);
+    });
+  }
+
+  const obs = new IntersectionObserver(
+    e => e.forEach(x => { if (x.isIntersecting) x.target.classList.add('visible'); }),
+    { threshold: 0.1 }
+  );
+  document.querySelectorAll('.step').forEach(s => obs.observe(s));
+</script>
+</body>
+</html>

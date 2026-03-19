@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Installer pfSense — Guide simplifié</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e1a; --bg2: #0f1525; --bg3: #141c30;
+    --accent: #1a6b3c; --accent2: #22a85a; --accent3: #4ade80;
+    --gold: #ffd166; --green: #06d6a0; --red: #ef476f; --purple: #b388ff;
+    --blue: #40e0ff; --orange: #fb923c;
+    --text: #e8edf8; --text2: #9aafc8; --text3: #5a7299;
+    --border: rgba(26,107,60,0.25); --glow: rgba(26,107,60,0.1);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'DM Mono', monospace; font-size: 14px;
+    line-height: 1.7; overflow-x: hidden;
+  }
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(26,107,60,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(26,107,60,0.025) 1px, transparent 1px);
+    background-size: 40px 40px; pointer-events: none; z-index: 0;
+  }
+
+  .progress-wrap { position: fixed; top: 0; left: 0; right: 0; height: 3px; background: var(--bg2); z-index: 100; }
+  .progress-bar { height: 100%; background: linear-gradient(90deg, var(--accent2), var(--accent3)); width: 0%; box-shadow: 0 0 10px var(--accent2); transition: width 0.1s; }
+
+  /* HEADER */
+  header { position: relative; padding: 70px 40px 50px; text-align: center; z-index: 1; }
+  header::before {
+    content: ''; position: absolute; top: -80px; left: 50%; transform: translateX(-50%);
+    width: 520px; height: 520px;
+    background: radial-gradient(circle, rgba(26,107,60,0.14) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  /* pfSense shield logo */
+  .pf-logo { display: inline-block; margin-bottom: 20px; animation: fadeUp 0.5s ease-out both; }
+  .pf-logo svg { width: 54px; height: 54px; filter: drop-shadow(0 0 14px rgba(34,168,90,0.7)); }
+
+  .badge {
+    display: inline-block; background: rgba(26,107,60,0.18); border: 1px solid var(--accent2);
+    color: var(--accent3); font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
+    padding: 5px 14px; border-radius: 2px; margin-bottom: 16px; animation: fadeUp 0.5s 0.1s ease-out both;
+  }
+  h1 {
+    font-family: 'Syne', sans-serif; font-size: clamp(26px, 4vw, 44px);
+    font-weight: 800; letter-spacing: -1px; animation: fadeUp 0.5s 0.2s ease-out both; margin-bottom: 12px;
+  }
+  h1 span { background: linear-gradient(135deg, var(--accent2), var(--accent3)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .subtitle { color: var(--text2); font-size: 13px; animation: fadeUp 0.5s 0.3s ease-out both; }
+
+  /* TABS */
+  .tabs {
+    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
+    margin-bottom: 32px; animation: fadeUp 0.5s 0.4s ease-out both;
+    position: relative; z-index: 1;
+  }
+  .tab {
+    padding: 8px 20px; border-radius: 4px; font-family: 'Syne', sans-serif;
+    font-size: 12px; font-weight: 700; cursor: pointer;
+    border: 1px solid var(--border); background: var(--bg2);
+    color: var(--text2); transition: all 0.2s; user-select: none;
+  }
+  .tab:hover { border-color: var(--accent2); color: var(--accent3); }
+  .tab.active { background: var(--accent); border-color: var(--accent2); color: #fff; box-shadow: 0 4px 16px rgba(26,107,60,0.5); }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* CONTAINER */
+  .container { max-width: 680px; margin: 0 auto; padding: 0 24px 80px; position: relative; z-index: 1; }
+
+  .version-tag {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 4px; padding: 8px 16px; margin-bottom: 28px;
+    font-size: 12px; color: var(--text2);
+  }
+  .version-tag .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent3); box-shadow: 0 0 8px rgba(74,222,128,0.7); animation: blink 2s infinite; }
+  @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+  .version-tag strong { color: var(--text); }
+
+  /* STEP */
+  .step { margin-bottom: 28px; opacity: 0; transform: translateY(20px); transition: opacity 0.4s, transform 0.4s; }
+  .step.visible { opacity: 1; transform: translateY(0); }
+
+  .step-header { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+  .step-num {
+    min-width: 42px; height: 42px; border-radius: 4px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Syne', sans-serif; font-weight: 800; font-size: 16px; color: #fff;
+    box-shadow: 0 4px 16px rgba(26,107,60,0.5); flex-shrink: 0;
+  }
+  .step h2 { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700; }
+  .step h2 small { display: block; font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text3); letter-spacing: 2px; text-transform: uppercase; }
+  .step-body { background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+
+  /* LISTES */
+  .items { list-style: none; }
+  .items li {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 13px 20px; border-bottom: 1px solid rgba(255,255,255,0.04);
+    color: var(--text2); font-size: 13px; transition: background 0.2s;
+  }
+  .items li:last-child { border-bottom: none; }
+  .items li:hover { background: var(--glow); }
+  .items li .icon { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+  .items li strong { color: var(--text); }
+
+  .steps-list { list-style: none; }
+  .steps-list li {
+    display: flex; gap: 14px; padding: 13px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    color: var(--text2); font-size: 13px; align-items: flex-start; transition: background 0.2s;
+  }
+  .steps-list li:last-child { border-bottom: none; }
+  .steps-list li:hover { background: var(--glow); }
+  .sn {
+    min-width: 24px; height: 24px; background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 3px; display: flex; align-items: center; justify-content: center;
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 12px; color: var(--accent3); flex-shrink: 0;
+  }
+  .steps-list li strong { color: var(--text); display: block; }
+
+  /* ALERTES */
+  .alert {
+    display: flex; gap: 12px; align-items: flex-start;
+    padding: 13px 20px; border-top: 1px solid rgba(255,255,255,0.04); font-size: 12px;
+  }
+  .alert-icon { font-size: 15px; flex-shrink: 0; }
+  .alert p { color: var(--text2); }
+  .alert strong { color: var(--text); }
+  .alert.warn   { background: rgba(255,209,102,0.06); border-left: 3px solid var(--gold);   } .alert.warn   .alert-icon { color: var(--gold);   }
+  .alert.info   { background: rgba(64,224,255,0.06);  border-left: 3px solid var(--blue);   } .alert.info   .alert-icon { color: var(--blue);   }
+  .alert.ok     { background: rgba(74,222,128,0.06);  border-left: 3px solid var(--accent3);} .alert.ok     .alert-icon { color: var(--accent3);}
+  .alert.purple { background: rgba(179,136,255,0.06); border-left: 3px solid var(--purple); } .alert.purple .alert-icon { color: var(--purple); }
+  .alert.danger { background: rgba(239,71,111,0.06);  border-left: 3px solid var(--red);    } .alert.danger .alert-icon { color: var(--red);    }
+  .alert.orange { background: rgba(251,146,60,0.06);  border-left: 3px solid var(--orange); } .alert.orange .alert-icon { color: var(--orange); }
+
+  /* CODE */
+  .code-block {
+    background: #060a14; border-top: 1px solid var(--border);
+    padding: 16px 20px; font-size: 12px; color: #8be9fd;
+    position: relative; overflow-x: auto;
+  }
+  .code-block .line { display: block; line-height: 2; }
+  .code-block .prompt  { color: var(--accent3); user-select: none; margin-right: 6px; }
+  .code-block .comment { color: var(--text3); }
+  .code-block .kw  { color: var(--purple); }
+  .code-block .str { color: var(--accent3); }
+  .code-block .val { color: var(--gold); }
+  .code-label { position: absolute; top: 8px; right: 12px; font-size: 10px; color: var(--text3); letter-spacing: 1px; text-transform: uppercase; }
+
+  /* SCHEMA RÉSEAU */
+  .net-schema {
+    background: #060a14; border-top: 1px solid var(--border);
+    padding: 20px 24px; font-family: 'DM Mono', monospace; font-size: 12px;
+    line-height: 2.2; overflow-x: auto;
+  }
+  .ns-int  { color: var(--accent3); }
+  .ns-pf   { color: var(--gold); font-weight: 500; }
+  .ns-ext  { color: var(--blue); }
+  .ns-arr  { color: var(--text3); }
+  .ns-note { color: var(--text3); font-size: 11px; }
+
+  /* RULE CARD */
+  .rule-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--border); }
+  .rule-card { background: var(--bg2); padding: 16px 18px; transition: background 0.2s; }
+  .rule-card:hover { background: var(--bg3); }
+  .rule-card h3 { font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+  .rule-card p { font-size: 12px; color: var(--text2); }
+  .rule-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .dot-allow { background: var(--accent3); box-shadow: 0 0 6px rgba(74,222,128,0.6); }
+  .dot-block { background: var(--red);    box-shadow: 0 0 6px rgba(239,71,111,0.6); }
+  .dot-nat   { background: var(--gold);   box-shadow: 0 0 6px rgba(255,209,102,0.5); }
+  .dot-vpn   { background: var(--purple); box-shadow: 0 0 6px rgba(179,136,255,0.5); }
+
+  code { background: rgba(26,107,60,0.18); color: var(--accent3); padding: 1px 6px; border-radius: 3px; font-size: 12px; }
+
+  footer { text-align: center; padding: 32px; border-top: 1px solid var(--border); color: var(--text3); font-size: 11px; letter-spacing: 1px; position: relative; z-index: 1; }
+  footer a { color: var(--accent2); text-decoration: none; }
+
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+  @media (max-width: 520px) { .rule-grid { grid-template-columns: 1fr; } header { padding: 50px 20px 36px; } }
+</style>
+</head>
+<body>
+
+<div class="progress-wrap"><div class="progress-bar" id="pb"></div></div>
+
+<header>
+  <div class="pf-logo">
+    <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <!-- Bouclier -->
+      <path d="M50 8 L88 24 L88 52 C88 72 70 88 50 95 C30 88 12 72 12 52 L12 24 Z"
+            fill="none" stroke="#22a85a" stroke-width="4" stroke-linejoin="round"/>
+      <!-- Remplissage léger -->
+      <path d="M50 8 L88 24 L88 52 C88 72 70 88 50 95 C30 88 12 72 12 52 L12 24 Z"
+            fill="rgba(26,107,60,0.15)"/>
+      <!-- pf text stylisé -->
+      <text x="50" y="58" text-anchor="middle" font-family="monospace" font-weight="bold"
+            font-size="28" fill="#4ade80" letter-spacing="-2">pf</text>
+      <!-- Points décoratifs -->
+      <circle cx="50" cy="20" r="3" fill="#22a85a" opacity="0.7"/>
+      <circle cx="30" cy="35" r="2" fill="#4ade80" opacity="0.4"/>
+      <circle cx="70" cy="35" r="2" fill="#4ade80" opacity="0.4"/>
+    </svg>
+  </div>
+  <div class="badge">Guide simplifié</div>
+  <h1>Firewall <span>pfSense</span></h1>
+  <p class="subtitle">Installation, configuration réseau et règles de pare-feu.</p>
+</header>
+
+<div class="container">
+
+  <!-- TABS -->
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('install')">Installation</div>
+    <div class="tab" onclick="switchTab('reseau')">Réseau &amp; Interfaces</div>
+    <div class="tab" onclick="switchTab('regles')">Règles &amp; NAT</div>
+    <div class="tab" onclick="switchTab('extras')">Extras</div>
+  </div>
+
+  <!-- ===== INSTALLATION ===== -->
+  <div class="panel active" id="panel-install">
+
+    <div class="version-tag">
+      <span class="dot"></span>
+      <strong>pfSense CE 2.7.x</strong> — FreeBSD · Open Source
+    </div>
+
+    <div class="step">
+      <div class="step-header"><div class="step-num">01</div><h2>Prérequis matériels<small>Hardware</small></h2></div>
+      <div class="step-body">
+        <ul class="items">
+          <li><span class="icon">🖥️</span><span><strong>CPU :</strong> 64-bit, 1 GHz minimum (2+ GHz recommandé)</span></li>
+          <li><span class="icon">💾</span><span><strong>RAM :</strong> 1 GB minimum — 2 GB+ recommandés</span></li>
+          <li><span class="icon">💿</span><span><strong>Disque :</strong> 8 GB minimum (SSD recommandé)</span></li>
+          <li><span class="icon">🌐</span><span><strong>Cartes réseau :</strong> <strong>2 minimum</strong> — une WAN (internet), une LAN (réseau local)</span></li>
+          <li><span class="icon">🔌</span><span><strong>Clé USB :</strong> 1 GB minimum pour l'image ISO</span></li>
+        </ul>
+        <div class="alert warn">
+          <span class="alert-icon">⚠️</span>
+          <p>pfSense nécessite <strong>au minimum 2 interfaces réseau</strong>. Sur une VM, créez deux cartes réseau avant de démarrer l'installation.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header"><div class="step-num">02</div><h2>Télécharger &amp; créer la clé USB<small>Download</small></h2></div>
+      <div class="step-body">
+        <ol class="steps-list">
+          <li><div class="sn">1</div><span>Téléchargez l'image ISO sur <code>netgate.com/pfsense-plus-software</code> (CE = gratuit).</span></li>
+          <li><div class="sn">2</div><span>Choisissez <strong>AMD64</strong>, format <strong>DVD Image (ISO)</strong>.</span></li>
+          <li><div class="sn">3</div><span>Créez la clé USB avec <strong>Rufus</strong> : schéma <strong>GPT</strong>, système cible <strong>UEFI</strong>.</span></li>
+        </ol>
+        <div class="alert info">
+          <span class="alert-icon">💡</span>
+          <p>pfSense peut aussi s'installer directement sur une <strong>machine virtuelle</strong> (VMware, Proxmox, VirtualBox) en montant l'ISO comme lecteur CD.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header"><div class="step-num">03</div><h2>Installer pfSense<small>Setup</small></h2></div>
+      <div class="step-body">
+        <ol class="steps-list">
+          <li><div class="sn">1</div><span>Démarrez sur la clé USB. À l'écran de démarrage, appuyez sur <strong>Entrée</strong> pour lancer l'installateur.</span></li>
+          <li><div class="sn">2</div><span>Acceptez le <strong>contrat de licence</strong>, puis choisissez <em>Install pfSense</em>.</span></li>
+          <li><div class="sn">3</div><span>Keymap : sélectionnez <strong>French (accent keys)</strong> pour un clavier AZERTY.</span></li>
+          <li><div class="sn">4</div><span>Partitionnement : choisissez <strong>Auto (ZFS)</strong> recommandé, ou <strong>Auto (UFS)</strong> pour les petites machines.</span></li>
+          <li><div class="sn">5</div><span>Sélectionnez le disque de destination et confirmez. L'installation démarre (~5 min).</span></li>
+          <li><div class="sn">6</div><span>À la fin, choisissez <strong>Reboot</strong> et retirez la clé USB.</span></li>
+        </ol>
+        <div class="alert ok">
+          <span class="alert-icon">✅</span>
+          <p>pfSense redémarre et affiche une <strong>console texte</strong> avec le menu de configuration. C'est normal — l'interface web viendra ensuite.</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ===== RÉSEAU ===== -->
+  <div class="panel" id="panel-reseau">
+
+    <div class="version-tag">
+      <span class="dot"></span>
+      <strong>Configuration réseau</strong> — WAN · LAN · WebGUI
+    </div>
+
+    <div class="step">
+      <div class="step-header"><div class="step-num">01</div><h2>Schéma réseau typique<small>Network Diagram</small></h2></div>
+      <div class="step-body">
+        <div class="net-schema">
+          <div><span class="ns-ext">🌍 Internet (FAI)</span></div>
+          <div><span class="ns-arr">&nbsp;&nbsp;&nbsp;&nbsp;│</span></div>
+          <div><span class="ns-arr">&nbsp;&nbsp;&nbsp;&nbsp;│ </span><span class="ns-note">IP publique (DHCP ou fixe)</span></div>
+          <div><span class="ns-arr">&nbsp;&nbsp;&nbsp;&nbsp;▼</span></div>
+          <div><span class="ns-pf">┌─────────────────────┐</span></div>
+          <div><span class="ns-pf">│   pfSense Firewall  │</span> <span class="ns-note">← WebGUI : https://192.168.1.1</span></div>
+          <div><span class="ns-pf">│  WAN ◄──────► LAN  │</span></div>
+          <div><span class="ns-pf">└─────────────────────┘</span></div>
+          <div><span class="ns-arr">&nbsp;&nbsp;&nbsp;&nbsp;│</span></div>
+          <div><span class="ns-arr">&nbsp;&nbsp;&nbsp;&nbsp;│ </span><span class="ns-note">192.168.1.0/24 (LAN)</span></div>
+          <div><span class="ns-arr">&nbsp;&nbsp;&nbsp;&nbsp;▼</span></div>
+          <div><span class="ns-int">🖥️  Postes clients / Serveurs</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header"><div class="step-num">02</div><h2>Assigner les interfaces (console)<small>Interface Assignment</small></h2></div>
+      <div class="step-body">
+        <ol class="steps-list">
+          <li><div class="sn">1</div><span>Au menu console, choisissez l'option <strong>1 — Assign Interfaces</strong>.</span></li>
+          <li><div class="sn">2</div><span>Répondez <strong>n</strong> à la question sur les VLANs (sauf si vous en avez besoin).</span></li>
+          <li><div class="sn">3</div><span>Assignez l'interface <strong>WAN</strong> : entrez le nom de la carte connectée à internet (ex : <code>em0</code>).</span></li>
+          <li><div class="sn">4</div><span>Assignez l'interface <strong>LAN</strong> : entrez le nom de la seconde carte (ex : <code>em1</code>).</span></li>
+          <li><div class="sn">5</div><span>Confirmez avec <strong>y</strong>. pfSense applique la configuration.</span></li>
+        </ol>
+        <div class="alert info">
+          <span class="alert-icon">💡</span>
+          <p>pfSense affiche les adresses MAC de chaque carte. Comparez-les avec celles visibles dans votre BIOS ou hyperviseur pour identifier quelle carte est quelle interface.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header"><div class="step-num">03</div><h2>Configurer l'IP du LAN (console)<small>LAN IP</small></h2></div>
+      <div class="step-body">
+        <ol class="steps-list">
+          <li><div class="sn">1</div><span>Au menu console, choisissez <strong>2 — Set interface(s) IP address</strong>.</span></li>
+          <li><div class="sn">2</div><span>Choisissez <strong>2 — LAN</strong>.</span></li>
+          <li><div class="sn">3</div><span>Entrez l'IP LAN souhaitée, ex : <code>192.168.1.1</code> avec masque <code>24</code>.</span></li>
+          <li><div class="sn">4</div><span>Activez le <strong>serveur DHCP</strong> sur le LAN si vous voulez que pfSense distribue les IP automatiquement.</span></li>
+        </ol>
+        <div class="alert ok">
+          <span class="alert-icon">✅</span>
+          <p>L'interface web est maintenant accessible depuis le LAN sur <code>https://192.168.1.1</code> avec <strong>admin / pfsense</strong> (à changer immédiatement).</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header"><div class="step-num">04</div><h2>Configuration initiale via WebGUI<small>Web Interface</small></h2></div>
+      <div class="step-body">
+        <ol class="steps-list">
+          <li><div class="sn">1</div><span>Depuis un PC du LAN, ouvrez <code>https://192.168.1.1</code> et acceptez l'avertissement de certificat.</span></li>
+          <li><div class="sn">2</div><span>Connectez-vous avec <strong>admin / pfsense</strong> et suivez l'assistant de configuration.</span></li>
+          <li><div class="sn">3</div><span>Renseignez le <strong>nom d'hôte</strong>, le <strong>domaine</strong> et les <strong>serveurs DNS</strong> (ex : 8.8.8.8).</span></li>
+          <li><div class="sn">4</div><span>Vérifiez la configuration <strong>WAN</strong> — DHCP si votre FAI l'attribue automatiquement, sinon IP statique.</span></li>
+          <li><div class="sn">5</div><span>Définissez un <strong>nouveau mot de passe admin</strong> et terminez l'assistant.</span></li>
+        </ol>
+        <div class="alert danger">
+          <span class="alert-icon">🔐</span>
+          <p>Changez le mot de passe <strong>admin / pfsense</strong> immédiatement. Ce mot de passe par défaut est public et connu de tous.</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ===== RÈGLES ===== -->
+  <div class="panel" id="panel-regles">
+
+    <div class="version-tag">
+      <span class="dot"></span>
+      <strong>Firewall</strong> — Règles, NAT &amp; redirection de ports
+    </div>
+
+    <div class="step">
+      <div class="step-header"><div class="step-num">01</div><h2>Comprendre les règles<small>Firewall Rules</small></h2></div>
+      <div class="step-body">
+        <p style="padding:16px 20px; color:var(--text2); font-size:13px; border-bottom:1px solid rgba(255,255,255,0.04);">Les règles pfSense sont évaluées <strong>de haut en bas</strong>. La première règle qui correspond est appliquée.</p>
+        <div class="rule-grid">
+          <div class="rule-card">
+            <h3><span class="rule-dot dot-allow"></span> Pass (Autoriser)</h3>
+            <p>Laisse passer le trafic correspondant à la règle.</p>
+          </div>
+          <div class="rule-card">
+            <h3><span class="rule-dot dot-block"></span> Block (Bloquer)</h3>
+            <p>Bloque silencieusement le trafic sans notifier l'émetteur.</p>
+          </div>
+          <div class="rule-card">
+            <h3><span class="rule-dot dot-nat"></span> NAT / Port Forward</h3>
+            <p>Redirige un port entrant vers une machine du LAN.</p>
+          </div>
+          <div class="rule-card">
+            <h3><span class="rule-dot dot-vpn"></span> Reject</h3>
+            <p>Bloque et notifie l'émetteur (TCP RST / ICMP unreachable).</p>
+          </div>
+        </div>
+        <div class="alert info">
+          <span class="alert-icon">💡</span>
+          <p>Par défaut, le <strong>LAN peut tout sortir</strong> (règle Allow LAN to any) et le <strong>WAN bloque tout entrant</strong>. C'est le comportement le plus sûr pour démarrer.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header"><div class="step-num">02</div><h2>Créer une règle de pare-feu<small>Add Rule</small></h2></div>
+      <div class="step-body">
+        <ol class="steps-list">
+          <li><div class="sn">1</div><span>Allez dans <strong>Firewall → Rules → LAN</strong> (ou WAN).</span></li>
+          <li><div class="sn">2</div><span>Cliquez sur <strong>Add ↑</strong> pour ajouter une règle en haut de la liste.</span></li>
+          <li><div class="sn">3</div><span>Choisissez l'<strong>action</strong> (Pass / Block), le <strong>protocole</strong> (TCP, UDP, ICMP…).</span></li>
+          <li><div class="sn">4</div><span>Définissez la <strong>source</strong> et la <strong>destination</strong> (IP, réseau, alias ou "any").</span></li>
+          <li><div class="sn">5</div><span>Ajoutez une <strong>description</strong> claire, puis cliquez sur <em>Save</em> et <em>Apply Changes</em>.</span></li>
+        </ol>
+        <div class="alert warn">
+          <span class="alert-icon">⚠️</span>
+          <p>Cliquez toujours sur <strong>Apply Changes</strong> après avoir sauvegardé une règle, sinon elle ne sera pas active.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header"><div class="step-num">03</div><h2>Redirection de ports (NAT)<small>Port Forwarding</small></h2></div>
+      <div class="step-body">
+        <ol class="steps-list">
+          <li><div class="sn">1</div><span>Allez dans <strong>Firewall → NAT → Port Forward</strong>.</span></li>
+          <li><div class="sn">2</div><span>Cliquez sur <strong>Add</strong>. Interface : <code>WAN</code>.</span></li>
+          <li><div class="sn">3</div><span>Protocol : <code>TCP</code>. Destination port range : entrez le port à ouvrir (ex : <code>80</code> pour HTTP).</span></li>
+          <li><div class="sn">4</div><span>Redirect target IP : IP locale de votre serveur (ex : <code>192.168.1.10</code>).</span></li>
+          <li><div class="sn">5</div><span>Redirect target port : port de destination sur le serveur. Sauvegardez et appliquez.</span></li>
+        </ol>
+        <div class="alert ok">
+          <span class="alert-icon">✅</span>
+          <p>pfSense crée automatiquement la règle firewall associée au NAT. Votre service est accessible depuis internet.</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ===== EXTRAS ===== -->
+  <div class="panel" id="panel-extras">
+
+    <div class="version-tag">
+      <span class="dot"></span>
+      <strong>Fonctionnalités avancées</strong> — DHCP · DNS · VPN · Packages
+    </div>
+
+    <div class="step">
+      <div class="step-header"><div class="step-num">01</div><h2>Serveur DHCP<small>DHCP Server</small></h2></div>
+      <div class="step-body">
+        <ol class="steps-list">
+          <li><div class="sn">1</div><span>Allez dans <strong>Services → DHCP Server → LAN</strong>.</span></li>
+          <li><div class="sn">2</div><span>Cochez <strong>Enable DHCP server on LAN interface</strong>.</span></li>
+          <li><div class="sn">3</div><span>Définissez la <strong>plage d'adresses</strong> (ex : <code>192.168.1.100</code> → <code>192.168.1.200</code>).</span></li>
+          <li><div class="sn">4</div><span>Renseignez les <strong>DNS</strong> à distribuer et sauvegardez.</span></li>
+        </ol>
+        <div class="alert info">
+          <span class="alert-icon">💡</span>
+          <p>Vous pouvez attribuer des <strong>baux statiques</strong> (IP fixe par adresse MAC) dans la section <em>DHCP Static Mappings</em> en bas de la même page.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header"><div class="step-num">02</div><h2>DNS Resolver<small>DNS</small></h2></div>
+      <div class="step-body">
+        <ol class="steps-list">
+          <li><div class="sn">1</div><span>Allez dans <strong>Services → DNS Resolver</strong>.</span></li>
+          <li><div class="sn">2</div><span>Vérifiez que le résolveur est <strong>activé</strong> et que l'interface LAN est bien sélectionnée.</span></li>
+          <li><div class="sn">3</div><span>Activez <strong>DNSSEC</strong> pour sécuriser les requêtes DNS.</span></li>
+          <li><div class="sn">4</div><span>Optionnel : activez <strong>DNS over TLS</strong> pour chiffrer les requêtes vers les serveurs amont.</span></li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header"><div class="step-num">03</div><h2>VPN OpenVPN<small>Remote Access</small></h2></div>
+      <div class="step-body">
+        <ol class="steps-list">
+          <li><div class="sn">1</div><span>Allez dans <strong>VPN → OpenVPN → Wizards</strong> pour un assistant guidé.</span></li>
+          <li><div class="sn">2</div><span>Créez une <strong>autorité de certification (CA)</strong> interne si vous n'en avez pas.</span></li>
+          <li><div class="sn">3</div><span>Choisissez le port (<code>1194</code> UDP par défaut) et le réseau tunnel (ex : <code>10.8.0.0/24</code>).</span></li>
+          <li><div class="sn">4</div><span>L'assistant crée automatiquement les <strong>règles firewall</strong> et <strong>NAT</strong> nécessaires.</span></li>
+          <li><div class="sn">5</div><span>Exportez le profil client via <strong>VPN → OpenVPN → Client Export</strong> (installer le package si absent).</span></li>
+        </ol>
+        <div class="alert purple">
+          <span class="alert-icon">🔐</span>
+          <p>Le VPN permet à vos utilisateurs distants de se connecter au réseau interne de façon sécurisée, comme s'ils étaient sur place.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header"><div class="step-num">04</div><h2>Packages utiles<small>Packages</small></h2></div>
+      <div class="step-body">
+        <ul class="items">
+          <li><span class="icon">📦</span><span><strong>pfBlockerNG</strong> — Blocage de publicités et domaines malveillants (DNS sinkhole).</span></li>
+          <li><span class="icon">📦</span><span><strong>Snort / Suricata</strong> — Système de détection d'intrusion (IDS/IPS).</span></li>
+          <li><span class="icon">📦</span><span><strong>ntopng</strong> — Surveillance du trafic réseau en temps réel.</span></li>
+          <li><span class="icon">📦</span><span><strong>Squid</strong> — Proxy cache HTTP pour filtrer et accélérer la navigation.</span></li>
+          <li><span class="icon">📦</span><span><strong>acme</strong> — Certificats SSL Let's Encrypt pour la WebGUI.</span></li>
+        </ul>
+        <div class="alert info">
+          <span class="alert-icon">💡</span>
+          <p>Installez les packages via <strong>System → Package Manager → Available Packages</strong> directement depuis la WebGUI.</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<footer>
+  <p>pfSense CE &nbsp;·&nbsp;
+    <a href="https://www.pfsense.org/download/" target="_blank">Télécharger pfSense</a> &nbsp;·&nbsp;
+    <a href="https://docs.netgate.com/pfsense/en/latest/" target="_blank">Documentation Netgate</a>
+  </p>
+</footer>
+
+<script>
+  window.addEventListener('scroll', () => {
+    const st = document.documentElement.scrollTop;
+    const sh = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+    document.getElementById('pb').style.width = (st / sh * 100) + '%';
+  });
+
+  function switchTab(id) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    event.target.classList.add('active');
+    document.getElementById('panel-' + id).classList.add('active');
+    document.querySelectorAll('#panel-' + id + ' .step').forEach((s, i) => {
+      s.classList.remove('visible');
+      setTimeout(() => s.classList.add('visible'), i * 80);
+    });
+  }
+
+  const obs = new IntersectionObserver(
+    e => e.forEach(x => { if (x.isIntersecting) x.target.classList.add('visible'); }),
+    { threshold: 0.1 }
+  );
+  document.querySelectorAll('.step').forEach(s => obs.observe(s));
+</script>
+</body>
+</html>

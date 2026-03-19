@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Installer Windows 10 & 11 — Guide simplifié</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e1a; --bg2: #0f1525; --bg3: #141c30;
+    --accent: #0078d4; --accent2: #00b4d8; --accent3: #40e0ff;
+    --gold: #ffd166; --green: #06d6a0; --red: #ef476f; --purple: #b388ff;
+    --text: #e8edf8; --text2: #9aafc8; --text3: #5a7299;
+    --border: rgba(0,120,212,0.2); --glow: rgba(0,120,212,0.12);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'DM Mono', monospace; font-size: 14px;
+    line-height: 1.7; overflow-x: hidden;
+  }
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(0,120,212,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,120,212,0.03) 1px, transparent 1px);
+    background-size: 40px 40px; pointer-events: none; z-index: 0;
+  }
+
+  .progress-wrap { position: fixed; top: 0; left: 0; right: 0; height: 3px; background: var(--bg2); z-index: 100; }
+  .progress-bar { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent3)); width: 0%; box-shadow: 0 0 10px var(--accent); transition: width 0.1s; }
+
+  /* HEADER */
+  header { position: relative; padding: 70px 40px 50px; text-align: center; z-index: 1; }
+  header::before {
+    content: ''; position: absolute; top: -80px; left: 50%; transform: translateX(-50%);
+    width: 500px; height: 500px;
+    background: radial-gradient(circle, rgba(0,120,212,0.13) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  /* Logo Windows 4 carrés */
+  .win-logo {
+    display: inline-grid; grid-template-columns: 1fr 1fr; gap: 4px;
+    margin-bottom: 20px; animation: fadeUp 0.5s ease-out both;
+  }
+  .win-logo span {
+    display: block; width: 17px; height: 17px; border-radius: 2px;
+    animation: squarePop 0.4s ease-out both;
+  }
+  .win-logo span:nth-child(1) { background: var(--accent);  animation-delay: 0.05s; }
+  .win-logo span:nth-child(2) { background: var(--accent2); animation-delay: 0.15s; }
+  .win-logo span:nth-child(3) { background: var(--accent2); animation-delay: 0.25s; }
+  .win-logo span:nth-child(4) { background: var(--accent3); animation-delay: 0.35s; }
+  @keyframes squarePop { from { opacity:0; transform:scale(0); } to { opacity:1; transform:scale(1); } }
+
+  .badge {
+    display: inline-block; background: rgba(0,120,212,0.15); border: 1px solid var(--accent);
+    color: var(--accent3); font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
+    padding: 5px 14px; border-radius: 2px; margin-bottom: 16px; animation: fadeUp 0.5s 0.1s ease-out both;
+  }
+  h1 {
+    font-family: 'Syne', sans-serif; font-size: clamp(26px, 4vw, 44px);
+    font-weight: 800; letter-spacing: -1px; animation: fadeUp 0.5s 0.2s ease-out both; margin-bottom: 12px;
+  }
+  h1 span { background: linear-gradient(135deg, var(--accent), var(--accent3)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .subtitle { color: var(--text2); font-size: 13px; animation: fadeUp 0.5s 0.3s ease-out both; }
+
+  /* TABS */
+  .tabs {
+    display: flex; gap: 8px; justify-content: center;
+    margin-bottom: 32px; animation: fadeUp 0.5s 0.4s ease-out both;
+    position: relative; z-index: 1;
+  }
+  .tab {
+    padding: 9px 28px; border-radius: 4px; font-family: 'Syne', sans-serif;
+    font-size: 13px; font-weight: 700; cursor: pointer;
+    border: 1px solid var(--border); background: var(--bg2);
+    color: var(--text2); transition: all 0.2s; user-select: none;
+  }
+  .tab:hover { border-color: var(--accent); color: var(--accent3); }
+  .tab.active { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 0 4px 16px rgba(0,120,212,0.4); }
+
+  /* PANELS */
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* CONTAINER */
+  .container { max-width: 680px; margin: 0 auto; padding: 0 24px 80px; position: relative; z-index: 1; }
+
+  /* VERSION BADGE */
+  .version-tag {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 4px; padding: 8px 16px; margin-bottom: 28px;
+    font-size: 12px; color: var(--text2);
+  }
+  .version-tag .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px rgba(6,214,160,0.6); }
+  .version-tag strong { color: var(--text); }
+
+  /* STEP */
+  .step { margin-bottom: 28px; opacity: 0; transform: translateY(20px); transition: opacity 0.4s, transform 0.4s; }
+  .step.visible { opacity: 1; transform: translateY(0); }
+
+  .step-header { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+  .step-num {
+    min-width: 42px; height: 42px; border-radius: 4px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Syne', sans-serif; font-weight: 800; font-size: 16px; color: #fff;
+    box-shadow: 0 4px 16px rgba(0,120,212,0.35); flex-shrink: 0;
+  }
+  .step h2 { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700; }
+  .step h2 small { display: block; font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text3); letter-spacing: 2px; text-transform: uppercase; }
+
+  .step-body { background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+
+  /* LISTES */
+  .items { list-style: none; }
+  .items li {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 13px 20px; border-bottom: 1px solid rgba(255,255,255,0.04);
+    color: var(--text2); font-size: 13px; transition: background 0.2s;
+  }
+  .items li:last-child { border-bottom: none; }
+  .items li:hover { background: var(--glow); }
+  .items li .icon { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+  .items li strong { color: var(--text); }
+
+  .steps-list { list-style: none; }
+  .steps-list li {
+    display: flex; gap: 14px; padding: 13px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    color: var(--text2); font-size: 13px; align-items: flex-start; transition: background 0.2s;
+  }
+  .steps-list li:last-child { border-bottom: none; }
+  .steps-list li:hover { background: var(--glow); }
+  .sn {
+    min-width: 24px; height: 24px; background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 3px; display: flex; align-items: center; justify-content: center;
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 12px; color: var(--accent3); flex-shrink: 0;
+  }
+  .steps-list li strong { color: var(--text); display: block; }
+
+  /* ALERTES */
+  .alert {
+    display: flex; gap: 12px; align-items: flex-start;
+    padding: 13px 20px; border-top: 1px solid rgba(255,255,255,0.04); font-size: 12px;
+  }
+  .alert-icon { font-size: 15px; flex-shrink: 0; }
+  .alert p { color: var(--text2); }
+  .alert strong { color: var(--text); }
+  .alert.warn   { background: rgba(255,209,102,0.06); border-left: 3px solid var(--gold);   } .alert.warn   .alert-icon { color: var(--gold);   }
+  .alert.info   { background: rgba(0,120,212,0.06);   border-left: 3px solid var(--accent); } .alert.info   .alert-icon { color: var(--accent2);}
+  .alert.ok     { background: rgba(6,214,160,0.06);   border-left: 3px solid var(--green);  } .alert.ok     .alert-icon { color: var(--green);  }
+  .alert.purple { background: rgba(179,136,255,0.06); border-left: 3px solid var(--purple); } .alert.purple .alert-icon { color: var(--purple); }
+  .alert.danger { background: rgba(239,71,111,0.06);  border-left: 3px solid var(--red);    } .alert.danger .alert-icon { color: var(--red);    }
+
+  /* DIFF TABLE W10 vs W11 */
+  .diff {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 1px;
+    background: var(--border);
+  }
+  .diff-col { background: var(--bg2); padding: 18px 20px; }
+  .diff-col h3 { font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  .diff-col h3 .v { font-size: 10px; padding: 2px 8px; border-radius: 2px; letter-spacing: 1px; }
+  .v10 { background: rgba(0,120,212,0.15); color: var(--accent3); border: 1px solid rgba(0,120,212,0.3); }
+  .v11 { background: rgba(6,214,160,0.12); color: var(--green);   border: 1px solid rgba(6,214,160,0.3); }
+  .diff-col ul { list-style: none; }
+  .diff-col ul li { font-size: 12px; color: var(--text2); padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,0.04); display: flex; gap: 8px; align-items: flex-start; }
+  .diff-col ul li:last-child { border-bottom: none; }
+  .diff-col ul li::before { content: '·'; color: var(--accent); flex-shrink: 0; }
+
+  code { background: rgba(0,120,212,0.12); color: var(--accent3); padding: 1px 6px; border-radius: 3px; font-size: 12px; }
+
+  footer { text-align: center; padding: 32px; border-top: 1px solid var(--border); color: var(--text3); font-size: 11px; letter-spacing: 1px; position: relative; z-index: 1; }
+  footer a { color: var(--accent2); text-decoration: none; }
+
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+
+  @media (max-width: 500px) { .diff { grid-template-columns: 1fr; } header { padding: 50px 20px 36px; } }
+</style>
+</head>
+<body>
+
+<div class="progress-wrap"><div class="progress-bar" id="pb"></div></div>
+
+<header>
+  <div class="win-logo"><span></span><span></span><span></span><span></span></div>
+  <div class="badge">Guide simplifié</div>
+  <h1>Installer <span>Windows 10 &amp; 11</span></h1>
+  <p class="subtitle">Choisissez votre version et suivez les étapes.</p>
+</header>
+
+<div class="container">
+
+  <!-- TABS -->
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('w10')">Windows 10</div>
+    <div class="tab" onclick="switchTab('w11')">Windows 11</div>
+    <div class="tab" onclick="switchTab('diff')">Différences</div>
+  </div>
+
+  <!-- ===================== WINDOWS 10 ===================== -->
+  <div class="panel active" id="panel-w10">
+
+    <div class="version-tag">
+      <span class="dot"></span>
+      <strong>Windows 10</strong> — Supporté jusqu'en octobre 2025
+    </div>
+
+    <div class="step">
+      <div class="step-header"><div class="step-num">01</div><h2>Prérequis matériels<small>Hardware</small></h2></div>
+      <div class="step-body">
+        <ul class="items">
+          <li><span class="icon">🖥️</span><span><strong>Processeur :</strong> 1 GHz minimum</span></li>
+          <li><span class="icon">💾</span><span><strong>RAM :</strong> 1 GB (32-bit) ou 2 GB (64-bit)</span></li>
+          <li><span class="icon">💿</span><span><strong>Disque :</strong> 16 GB (32-bit) ou 20 GB (64-bit)</span></li>
+          <li><span class="icon">🎨</span><span><strong>Affichage :</strong> 800×600 minimum</span></li>
+        </ul>
+        <div class="alert info">
+          <span class="alert-icon">ℹ️</span>
+          <p>Windows 10 est très tolérant avec le matériel ancien. Il tourne sur la plupart des PC depuis 2010.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header"><div class="step-num">02</div><h2>Créer la clé USB bootable<small>Bootable Media</small></h2></div>
+      <div class="step-body">
+        <ol class="steps-list">
+          <li><div class="sn">1</div><span>Téléchargez le <strong>Media Creation Tool</strong> sur <code>microsoft.com/fr-fr/software-download/windows10</code>.</span></li>
+          <li><div class="sn">2</div><span>Lancez-le et choisissez <em>Créer un support d'installation</em>.</span></li>
+          <li><div class="sn">3</div><span>Sélectionnez <strong>Clé USB</strong>, choisissez votre clé (8 GB+) et laissez le téléchargement se terminer.</span></li>
+        </ol>
+        <div class="alert warn">
+          <span class="alert-icon">⚠️</span>
+          <p>La clé USB sera <strong>entièrement effacée</strong>. Sauvegardez son contenu avant.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header"><div class="step-num">03</div><h2>Démarrer sur la clé USB<small>Boot</small></h2></div>
+      <div class="step-body">
+        <ol class="steps-list">
+          <li><div class="sn">1</div><span>Redémarrez le PC avec la clé USB branchée.</span></li>
+          <li><div class="sn">2</div><span>Appuyez sur <code>F12</code>, <code>F11</code> ou <code>Esc</code> au démarrage pour ouvrir le <strong>menu de boot</strong>.</span></li>
+          <li><div class="sn">3</div><span>Sélectionnez votre clé USB dans la liste et appuyez sur Entrée.</span></li>
+        </ol>
+        <div class="alert info">
+          <span class="alert-icon">💡</span>
+          <p>La touche de boot varie selon la marque : <strong>Dell</strong> F12 · <strong>HP</strong> F9 · <strong>Asus</strong> F8 · <strong>Lenovo</strong> F12.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header"><div class="step-num">04</div><h2>Installer Windows 10<small>Setup</small></h2></div>
+      <div class="step-body">
+        <ol class="steps-list">
+          <li><div class="sn">1</div><span>Sélectionnez la <strong>langue</strong> et le clavier, puis cliquez sur <em>Installer maintenant</em>.</span></li>
+          <li><div class="sn">2</div><span>Entrez votre <strong>clé de produit</strong> ou cliquez sur <em>Je n'ai pas de clé</em>.</span></li>
+          <li><div class="sn">3</div><span>Choisissez l'édition : <strong>Windows 10 Famille</strong> ou <strong>Professionnel</strong>.</span></li>
+          <li><div class="sn">4</div><span>Acceptez le contrat, puis sélectionnez <strong>Installation personnalisée</strong>.</span></li>
+          <li><div class="sn">5</div><span>Choisissez le disque de destination et cliquez sur <em>Suivant</em>. L'installation démarre (~20 min).</span></li>
+        </ol>
+        <div class="alert warn">
+          <span class="alert-icon">⚠️</span>
+          <p>Le PC redémarre plusieurs fois automatiquement. Ne débranchez pas la clé USB avant la fin.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header"><div class="step-num">05</div><h2>Configuration initiale (OOBE)<small>First Boot</small></h2></div>
+      <div class="step-body">
+        <ol class="steps-list">
+          <li><div class="sn">1</div><span>Choisissez votre <strong>région</strong> et la disposition du clavier.</span></li>
+          <li><div class="sn">2</div><span>Connectez-vous à votre <strong>réseau Wi-Fi</strong> (ou passez cette étape).</span></li>
+          <li><div class="sn">3</div><span>Choisissez <em>Configurer pour un usage personnel</em> et connectez-vous avec un <strong>compte Microsoft</strong> ou créez un compte local.</span></li>
+          <li><div class="sn">4</div><span>Configurez le <strong>code PIN</strong> et les options de confidentialité selon vos préférences.</span></li>
+        </ol>
+        <div class="alert ok">
+          <span class="alert-icon">✅</span>
+          <p>Windows 10 est installé ! Lancez <strong>Windows Update</strong> pour installer les dernières mises à jour.</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ===================== WINDOWS 11 ===================== -->
+  <div class="panel" id="panel-w11">
+
+    <div class="version-tag">
+      <span class="dot"></span>
+      <strong>Windows 11</strong> — Version actuelle recommandée
+    </div>
+
+    <div class="step">
+      <div class="step-header"><div class="step-num">01</div><h2>Prérequis matériels<small>Hardware</small></h2></div>
+      <div class="step-body">
+        <ul class="items">
+          <li><span class="icon">🖥️</span><span><strong>Processeur :</strong> 1 GHz, 2 cœurs, 64-bit — compatible liste Intel/AMD</span></li>
+          <li><span class="icon">💾</span><span><strong>RAM :</strong> 4 GB minimum</span></li>
+          <li><span class="icon">💿</span><span><strong>Disque :</strong> 64 GB minimum</span></li>
+          <li><span class="icon">🔒</span><span><strong>TPM 2.0</strong> obligatoire</span></li>
+          <li><span class="icon">🛡️</span><span><strong>Secure Boot</strong> activé dans le BIOS</span></li>
+          <li><span class="icon">🎨</span><span><strong>Affichage :</strong> 720p minimum, 9 pouces+</span></li>
+        </ul>
+        <div class="alert warn">
+          <span class="alert-icon">⚠️</span>
+          <p>Windows 11 exige le <strong>TPM 2.0</strong>. Vérifiez sa présence avec <code>tpm.msc</code> avant de commencer.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header"><div class="step-num">02</div><h2>Vérifier la compatibilité<small>PC Health Check</small></h2></div>
+      <div class="step-body">
+        <ol class="steps-list">
+          <li><div class="sn">1</div><span>Téléchargez l'outil <strong>PC Health Check</strong> sur le site de Microsoft.</span></li>
+          <li><div class="sn">2</div><span>Lancez-le et cliquez sur <em>Vérifier maintenant</em>.</span></li>
+          <li><div class="sn">3</div><span>Si votre PC est compatible, passez à l'étape suivante. Sinon, vérifiez le TPM et le Secure Boot dans le BIOS.</span></li>
+        </ol>
+        <div class="alert info">
+          <span class="alert-icon">💡</span>
+          <p>Pour activer le TPM : BIOS → onglet Sécurité → <strong>TPM Device</strong> ou <strong>PTT</strong> → Activé.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header"><div class="step-num">03</div><h2>Créer la clé USB bootable<small>Bootable Media</small></h2></div>
+      <div class="step-body">
+        <ol class="steps-list">
+          <li><div class="sn">1</div><span>Téléchargez le <strong>Media Creation Tool Windows 11</strong> sur <code>microsoft.com/fr-fr/software-download/windows11</code>.</span></li>
+          <li><div class="sn">2</div><span>Lancez-le, choisissez <em>Créer un support d'installation</em> et sélectionnez <strong>Clé USB</strong> (8 GB+).</span></li>
+          <li><div class="sn">3</div><span>Attendez la fin du téléchargement et de la création (~10–15 min).</span></li>
+        </ol>
+        <div class="alert warn">
+          <span class="alert-icon">⚠️</span>
+          <p>La clé USB sera <strong>entièrement effacée</strong>. Sauvegardez son contenu avant.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header"><div class="step-num">04</div><h2>Démarrer &amp; Installer<small>Setup</small></h2></div>
+      <div class="step-body">
+        <ol class="steps-list">
+          <li><div class="sn">1</div><span>Redémarrez avec la clé USB branchée et accédez au <strong>menu de boot</strong> (<code>F12</code> / <code>F11</code> selon la marque).</span></li>
+          <li><div class="sn">2</div><span>Sélectionnez la <strong>langue</strong>, puis cliquez sur <em>Installer maintenant</em>.</span></li>
+          <li><div class="sn">3</div><span>Entrez votre <strong>clé de produit</strong> ou cliquez sur <em>Je n'ai pas de clé</em>.</span></li>
+          <li><div class="sn">4</div><span>Choisissez l'édition (<strong>Famille</strong> ou <strong>Professionnel</strong>), acceptez le contrat.</span></li>
+          <li><div class="sn">5</div><span>Sélectionnez <strong>Installation personnalisée</strong>, choisissez le disque, puis laissez l'installation se terminer (~25 min).</span></li>
+        </ol>
+        <div class="alert danger">
+          <span class="alert-icon">🗑️</span>
+          <p>Une <strong>installation propre efface le disque</strong>. Sauvegardez vos données importantes avant de continuer.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header"><div class="step-num">05</div><h2>Configuration initiale (OOBE)<small>First Boot</small></h2></div>
+      <div class="step-body">
+        <ol class="steps-list">
+          <li><div class="sn">1</div><span>Choisissez votre <strong>pays</strong> et la disposition du clavier.</span></li>
+          <li><div class="sn">2</div><span>Connectez-vous au <strong>Wi-Fi</strong> — Windows 11 Famille demande une connexion internet obligatoire.</span></li>
+          <li><div class="sn">3</div><span>Connectez-vous avec votre <strong>compte Microsoft</strong> ou créez-en un.</span></li>
+          <li><div class="sn">4</div><span>Configurez le <strong>code PIN</strong>, choisissez vos options de confidentialité et attendez le bureau.</span></li>
+        </ol>
+        <div class="alert purple">
+          <span class="alert-icon">💡</span>
+          <p>Pour créer un <strong>compte local</strong> sans compte Microsoft : déconnectez le Wi-Fi avant l'étape de connexion, puis choisissez <em>Options de connexion → Compte hors connexion</em>.</p>
+        </div>
+        <div class="alert ok">
+          <span class="alert-icon">✅</span>
+          <p>Windows 11 est installé ! Lancez <strong>Windows Update</strong> pour récupérer les dernières mises à jour.</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ===================== DIFFÉRENCES ===================== -->
+  <div class="panel" id="panel-diff">
+
+    <div class="step">
+      <div class="step-header"><div class="step-num">📊</div><h2>Windows 10 vs Windows 11<small>Comparison</small></h2></div>
+      <div class="step-body">
+        <div class="diff">
+          <div class="diff-col">
+            <h3><span class="v v10">WIN 10</span></h3>
+            <ul>
+              <li>Supporte le matériel ancien (depuis 2010)</li>
+              <li>Pas de TPM requis</li>
+              <li>Menu Démarrer à gauche classique</li>
+              <li>Fin de support : <strong>octobre 2025</strong></li>
+              <li>RAM minimum : 1 GB</li>
+              <li>Stockage minimum : 16 GB</li>
+              <li>Compte local possible facilement</li>
+            </ul>
+          </div>
+          <div class="diff-col">
+            <h3><span class="v v11">WIN 11</span></h3>
+            <ul>
+              <li>Processeurs récents requis (2017+)</li>
+              <li>TPM 2.0 obligatoire</li>
+              <li>Menu Démarrer centré, nouvelle interface</li>
+              <li>Support long terme (2031+)</li>
+              <li>RAM minimum : 4 GB</li>
+              <li>Stockage minimum : 64 GB</li>
+              <li>Compte Microsoft quasi-obligatoire</li>
+            </ul>
+          </div>
+        </div>
+        <div class="alert info">
+          <span class="alert-icon">💡</span>
+          <p>Vous avez un <strong>PC récent</strong> (2017+) ? Choisissez <strong>Windows 11</strong> pour le support long terme. PC ancien ? Restez sur <strong>Windows 10</strong> en attendant un remplacement.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header"><div class="step-num">🔑</div><h2>Clé de produit<small>Licensing</small></h2></div>
+      <div class="step-body">
+        <ul class="items">
+          <li><span class="icon">🆓</span><span><strong>Mise à niveau gratuite</strong> — depuis Windows 10 vers Windows 11 via Windows Update si le PC est compatible.</span></li>
+          <li><span class="icon">🔑</span><span><strong>Achat</strong> — Famille (~145 €) ou Professionnel (~260 €) sur le Microsoft Store.</span></li>
+          <li><span class="icon">🎓</span><span><strong>Étudiant / entreprise</strong> — licences disponibles via votre école ou votre employeur.</span></li>
+        </ul>
+        <div class="alert warn">
+          <span class="alert-icon">⚠️</span>
+          <p>Sans clé, Windows fonctionne mais affiche un filigrane et certaines options de personnalisation sont bloquées.</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<footer>
+  <p>Windows 10 &amp; 11 &nbsp;·&nbsp;
+    <a href="https://www.microsoft.com/fr-fr/software-download/windows10" target="_blank">Télécharger W10</a>
+    &nbsp;·&nbsp;
+    <a href="https://www.microsoft.com/fr-fr/software-download/windows11" target="_blank">Télécharger W11</a>
+  </p>
+</footer>
+
+<script>
+  // Progress bar
+  window.addEventListener('scroll', () => {
+    const st = document.documentElement.scrollTop;
+    const sh = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+    document.getElementById('pb').style.width = (st / sh * 100) + '%';
+  });
+
+  // Tabs
+  function switchTab(id) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => { p.classList.remove('active'); });
+    event.target.classList.add('active');
+    document.getElementById('panel-' + id).classList.add('active');
+    // Re-trigger animations
+    document.querySelectorAll('#panel-' + id + ' .step').forEach((s, i) => {
+      s.classList.remove('visible');
+      setTimeout(() => s.classList.add('visible'), i * 80);
+    });
+  }
+
+  // Scroll animations
+  const obs = new IntersectionObserver(
+    e => e.forEach(x => { if (x.isIntersecting) x.target.classList.add('visible'); }),
+    { threshold: 0.1 }
+  );
+  document.querySelectorAll('.step').forEach(s => obs.observe(s));
+</script>
+</body>
+</html>

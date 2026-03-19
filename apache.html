@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Installer Apache2 — Guide simplifié</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e1a; --bg2: #0f1525; --bg3: #141c30;
+    --accent: #cc2200; --accent2: #ff4500; --accent3: #ff8c69;
+    --gold: #ffd166; --green: #06d6a0; --red: #ef476f; --purple: #b388ff;
+    --blue: #40e0ff;
+    --text: #e8edf8; --text2: #9aafc8; --text3: #5a7299;
+    --border: rgba(204,34,0,0.22); --glow: rgba(204,34,0,0.1);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'DM Mono', monospace; font-size: 14px;
+    line-height: 1.7; overflow-x: hidden;
+  }
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(204,34,0,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(204,34,0,0.025) 1px, transparent 1px);
+    background-size: 40px 40px; pointer-events: none; z-index: 0;
+  }
+
+  .progress-wrap { position: fixed; top: 0; left: 0; right: 0; height: 3px; background: var(--bg2); z-index: 100; }
+  .progress-bar { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent3)); width: 0%; box-shadow: 0 0 10px var(--accent); transition: width 0.1s; }
+
+  /* HEADER */
+  header { position: relative; padding: 70px 40px 50px; text-align: center; z-index: 1; }
+  header::before {
+    content: ''; position: absolute; top: -80px; left: 50%; transform: translateX(-50%);
+    width: 500px; height: 500px;
+    background: radial-gradient(circle, rgba(204,34,0,0.13) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  /* Apache feather logo SVG */
+  .apache-logo {
+    display: inline-block; margin-bottom: 20px;
+    animation: fadeUp 0.5s ease-out both;
+  }
+  .apache-logo svg { width: 52px; height: 52px; filter: drop-shadow(0 0 14px rgba(204,34,0,0.7)); }
+
+  .badge {
+    display: inline-block; background: rgba(204,34,0,0.15); border: 1px solid var(--accent);
+    color: var(--accent3); font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
+    padding: 5px 14px; border-radius: 2px; margin-bottom: 16px; animation: fadeUp 0.5s 0.1s ease-out both;
+  }
+  h1 {
+    font-family: 'Syne', sans-serif; font-size: clamp(26px, 4vw, 44px);
+    font-weight: 800; letter-spacing: -1px; animation: fadeUp 0.5s 0.2s ease-out both; margin-bottom: 12px;
+  }
+  h1 span { background: linear-gradient(135deg, var(--accent), var(--accent3)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .subtitle { color: var(--text2); font-size: 13px; animation: fadeUp 0.5s 0.3s ease-out both; }
+
+  /* TABS */
+  .tabs {
+    display: flex; gap: 8px; justify-content: center;
+    margin-bottom: 32px; animation: fadeUp 0.5s 0.4s ease-out both;
+    position: relative; z-index: 1;
+  }
+  .tab {
+    padding: 8px 22px; border-radius: 4px; font-family: 'Syne', sans-serif;
+    font-size: 12px; font-weight: 700; cursor: pointer;
+    border: 1px solid var(--border); background: var(--bg2);
+    color: var(--text2); transition: all 0.2s; user-select: none;
+  }
+  .tab:hover { border-color: var(--accent); color: var(--accent3); }
+  .tab.active { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 0 4px 16px rgba(204,34,0,0.4); }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* CONTAINER */
+  .container { max-width: 680px; margin: 0 auto; padding: 0 24px 80px; position: relative; z-index: 1; }
+
+  .version-tag {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 4px; padding: 8px 16px; margin-bottom: 28px;
+    font-size: 12px; color: var(--text2);
+  }
+  .version-tag .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px rgba(6,214,160,0.6); animation: blink 2s infinite; }
+  @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
+  .version-tag strong { color: var(--text); }
+
+  /* STEP */
+  .step { margin-bottom: 28px; opacity: 0; transform: translateY(20px); transition: opacity 0.4s, transform 0.4s; }
+  .step.visible { opacity: 1; transform: translateY(0); }
+
+  .step-header { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+  .step-num {
+    min-width: 42px; height: 42px; border-radius: 4px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Syne', sans-serif; font-weight: 800; font-size: 16px; color: #fff;
+    box-shadow: 0 4px 16px rgba(204,34,0,0.4); flex-shrink: 0;
+  }
+  .step h2 { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700; }
+  .step h2 small { display: block; font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text3); letter-spacing: 2px; text-transform: uppercase; }
+  .step-body { background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+
+  /* LISTES */
+  .items { list-style: none; }
+  .items li {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 13px 20px; border-bottom: 1px solid rgba(255,255,255,0.04);
+    color: var(--text2); font-size: 13px; transition: background 0.2s;
+  }
+  .items li:last-child { border-bottom: none; }
+  .items li:hover { background: var(--glow); }
+  .items li .icon { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+  .items li strong { color: var(--text); }
+
+  .steps-list { list-style: none; }
+  .steps-list li {
+    display: flex; gap: 14px; padding: 13px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    color: var(--text2); font-size: 13px; align-items: flex-start; transition: background 0.2s;
+  }
+  .steps-list li:last-child { border-bottom: none; }
+  .steps-list li:hover { background: var(--glow); }
+  .sn {
+    min-width: 24px; height: 24px; background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 3px; display: flex; align-items: center; justify-content: center;
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 12px; color: var(--accent3); flex-shrink: 0;
+  }
+  .steps-list li strong { color: var(--text); display: block; }
+
+  /* ALERTES */
+  .alert {
+    display: flex; gap: 12px; align-items: flex-start;
+    padding: 13px 20px; border-top: 1px solid rgba(255,255,255,0.04); font-size: 12px;
+  }
+  .alert-icon { font-size: 15px; flex-shrink: 0; }
+  .alert p { color: var(--text2); }
+  .alert strong { color: var(--text); }
+  .alert.warn   { background: rgba(255,209,102,0.06); border-left: 3px solid var(--gold);   } .alert.warn   .alert-icon { color: var(--gold);   }
+  .alert.info   { background: rgba(64,224,255,0.06);  border-left: 3px solid var(--blue);   } .alert.info   .alert-icon { color: var(--blue);   }
+  .alert.ok     { background: rgba(6,214,160,0.06);   border-left: 3px solid var(--green);  } .alert.ok     .alert-icon { color: var(--green);  }
+  .alert.purple { background: rgba(179,136,255,0.06); border-left: 3px solid var(--purple); } .alert.purple .alert-icon { color: var(--purple); }
+  .alert.danger { background: rgba(239,71,111,0.06);  border-left: 3px solid var(--red);    } .alert.danger .alert-icon { color: var(--red);    }
+
+  /* CODE */
+  .code-block {
+    background: #060a14; border-top: 1px solid var(--border);
+    padding: 16px 20px; font-size: 12px; color: #8be9fd;
+    position: relative; overflow-x: auto;
+  }
+  .code-block .prompt { color: var(--accent2); user-select: none; margin-right: 6px; }
+  .code-block .root   { color: var(--accent);  user-select: none; margin-right: 6px; }
+  .code-block .line { display: block; line-height: 2; }
+  .code-block .comment { color: var(--text3); }
+  .code-block .kw  { color: var(--purple); }
+  .code-block .str { color: var(--green); }
+  .code-label { position: absolute; top: 8px; right: 12px; font-size: 10px; color: var(--text3); letter-spacing: 1px; text-transform: uppercase; }
+
+  /* VHOST PREVIEW */
+  .vhost-preview {
+    background: #060a14; border-top: 1px solid var(--border);
+    padding: 18px 20px; font-size: 12px; font-family: 'DM Mono', monospace;
+    line-height: 1.9; overflow-x: auto;
+  }
+  .vh-tag   { color: var(--accent3); }
+  .vh-attr  { color: var(--gold); }
+  .vh-val   { color: var(--green); }
+  .vh-comment { color: var(--text3); }
+
+  code { background: rgba(204,34,0,0.12); color: var(--accent3); padding: 1px 6px; border-radius: 3px; font-size: 12px; }
+
+  footer { text-align: center; padding: 32px; border-top: 1px solid var(--border); color: var(--text3); font-size: 11px; letter-spacing: 1px; position: relative; z-index: 1; }
+  footer a { color: var(--accent2); text-decoration: none; }
+
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+  @media (max-width: 500px) { header { padding: 50px 20px 36px; } .tabs { flex-wrap: wrap; } }
+</style>
+</head>
+<body>
+
+<div class="progress-wrap"><div class="progress-bar" id="pb"></div></div>
+
+<header>
+  <div class="apache-logo">
+    <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <!-- Plume Apache stylisée -->
+      <path d="M50 10 Q70 25 65 50 Q60 70 50 90" fill="none" stroke="#cc2200" stroke-width="4" stroke-linecap="round"/>
+      <path d="M50 10 Q30 25 35 50 Q40 70 50 90" fill="none" stroke="#ff4500" stroke-width="3" stroke-linecap="round"/>
+      <path d="M50 20 Q65 35 60 55" fill="none" stroke="#ff8c69" stroke-width="2" stroke-linecap="round" opacity="0.7"/>
+      <path d="M50 20 Q35 35 40 55" fill="none" stroke="#ff8c69" stroke-width="2" stroke-linecap="round" opacity="0.7"/>
+      <path d="M50 35 Q62 45 58 62" fill="none" stroke="#ff8c69" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+      <path d="M50 35 Q38 45 42 62" fill="none" stroke="#ff8c69" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+      <circle cx="50" cy="10" r="4" fill="#cc2200"/>
+      <circle cx="50" cy="90" r="3" fill="#ff4500" opacity="0.6"/>
+    </svg>
+  </div>
+  <div class="badge">Guide simplifié</div>
+  <h1>Serveur <span>Apache2</span></h1>
+  <p class="subtitle">Installation, configuration et virtualhost sur Debian/Ubuntu.</p>
+</header>
+
+<div class="container">
+
+  <!-- TABS -->
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('install')">Installation</div>
+    <div class="tab" onclick="switchTab('vhost')">VirtualHost</div>
+    <div class="tab" onclick="switchTab('ssl')">HTTPS / SSL</div>
+  </div>
+
+  <!-- ===== INSTALLATION ===== -->
+  <div class="panel active" id="panel-install">
+
+    <div class="version-tag">
+      <span class="dot"></span>
+      <strong>Apache 2.4</strong> — Debian 12 / Ubuntu 22.04+
+    </div>
+
+    <div class="step">
+      <div class="step-header"><div class="step-num">01</div><h2>Installer Apache2<small>Installation</small></h2></div>
+      <div class="step-body">
+        <div class="code-block">
+          <span class="code-label">Terminal</span>
+          <span class="line"><span class="comment"># Mettre à jour les paquets</span></span>
+          <span class="line"><span class="root">#</span>apt update</span>
+          <span class="line"> </span>
+          <span class="line"><span class="comment"># Installer Apache2</span></span>
+          <span class="line"><span class="root">#</span>apt install apache2 -y</span>
+        </div>
+        <div class="alert ok">
+          <span class="alert-icon">✅</span>
+          <p>Apache démarre automatiquement après l'installation. Ouvrez <code>http://localhost</code> dans un navigateur pour voir la page de test.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header"><div class="step-num">02</div><h2>Gérer le service<small>Service Management</small></h2></div>
+      <div class="step-body">
+        <div class="code-block">
+          <span class="code-label">Terminal</span>
+          <span class="line"><span class="comment"># Démarrer Apache</span></span>
+          <span class="line"><span class="root">#</span>systemctl start apache2</span>
+          <span class="line"> </span>
+          <span class="line"><span class="comment"># Arrêter Apache</span></span>
+          <span class="line"><span class="root">#</span>systemctl stop apache2</span>
+          <span class="line"> </span>
+          <span class="line"><span class="comment"># Redémarrer Apache</span></span>
+          <span class="line"><span class="root">#</span>systemctl restart apache2</span>
+          <span class="line"> </span>
+          <span class="line"><span class="comment"># Activer au démarrage du système</span></span>
+          <span class="line"><span class="root">#</span>systemctl enable apache2</span>
+          <span class="line"> </span>
+          <span class="line"><span class="comment"># Vérifier le statut</span></span>
+          <span class="line"><span class="root">#</span>systemctl status apache2</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header"><div class="step-num">03</div><h2>Pare-feu (UFW)<small>Firewall</small></h2></div>
+      <div class="step-body">
+        <div class="code-block">
+          <span class="code-label">Terminal</span>
+          <span class="line"><span class="comment"># Autoriser HTTP (port 80)</span></span>
+          <span class="line"><span class="root">#</span>ufw allow 'Apache'</span>
+          <span class="line"> </span>
+          <span class="line"><span class="comment"># Autoriser HTTP + HTTPS (ports 80 et 443)</span></span>
+          <span class="line"><span class="root">#</span>ufw allow 'Apache Full'</span>
+          <span class="line"> </span>
+          <span class="line"><span class="comment"># Vérifier les règles actives</span></span>
+          <span class="line"><span class="root">#</span>ufw status</span>
+        </div>
+        <div class="alert info">
+          <span class="alert-icon">💡</span>
+          <p>Si UFW n'est pas actif, activez-le d'abord avec <code>ufw enable</code> avant d'ajouter des règles.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header"><div class="step-num">04</div><h2>Structure des fichiers<small>File Structure</small></h2></div>
+      <div class="step-body">
+        <ul class="items">
+          <li><span class="icon">📁</span><span><code>/etc/apache2/</code> — <strong>Dossier de configuration principal</strong></span></li>
+          <li><span class="icon">📄</span><span><code>/etc/apache2/apache2.conf</code> — <strong>Configuration globale</strong></span></li>
+          <li><span class="icon">📁</span><span><code>/etc/apache2/sites-available/</code> — <strong>VirtualHosts disponibles</strong></span></li>
+          <li><span class="icon">📁</span><span><code>/etc/apache2/sites-enabled/</code> — <strong>VirtualHosts actifs</strong></span></li>
+          <li><span class="icon">📁</span><span><code>/var/www/html/</code> — <strong>Racine web par défaut</strong></span></li>
+          <li><span class="icon">📋</span><span><code>/var/log/apache2/</code> — <strong>Journaux d'accès et d'erreurs</strong></span></li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ===== VIRTUALHOST ===== -->
+  <div class="panel" id="panel-vhost">
+
+    <div class="version-tag">
+      <span class="dot"></span>
+      <strong>VirtualHost</strong> — Héberger plusieurs sites sur un même serveur
+    </div>
+
+    <div class="step">
+      <div class="step-header"><div class="step-num">01</div><h2>Créer le dossier du site<small>Web Root</small></h2></div>
+      <div class="step-body">
+        <div class="code-block">
+          <span class="code-label">Terminal</span>
+          <span class="line"><span class="comment"># Créer le dossier racine du site</span></span>
+          <span class="line"><span class="root">#</span>mkdir -p /var/www/monsite.fr/html</span>
+          <span class="line"> </span>
+          <span class="line"><span class="comment"># Attribuer les permissions à l'utilisateur courant</span></span>
+          <span class="line"><span class="root">#</span>chown -R $USER:$USER /var/www/monsite.fr</span>
+          <span class="line"> </span>
+          <span class="line"><span class="comment"># Créer une page d'accueil de test</span></span>
+          <span class="line"><span class="prompt">$</span>echo "&lt;h1&gt;Bienvenue sur monsite.fr&lt;/h1&gt;" &gt; /var/www/monsite.fr/html/index.html</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header"><div class="step-num">02</div><h2>Créer le fichier VirtualHost<small>Config File</small></h2></div>
+      <div class="step-body">
+        <div class="code-block">
+          <span class="code-label">Terminal</span>
+          <span class="line"><span class="root">#</span>nano /etc/apache2/sites-available/monsite.fr.conf</span>
+        </div>
+        <div class="vhost-preview">
+          <span style="color:var(--text3)"># Contenu du fichier :</span><br>
+          <span class="vh-tag">&lt;VirtualHost</span> <span class="vh-val">*:80</span><span class="vh-tag">&gt;</span><br>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span class="vh-attr">ServerName</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="vh-val">monsite.fr</span><br>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span class="vh-attr">ServerAlias</span>&nbsp;&nbsp;&nbsp;&nbsp;<span class="vh-val">www.monsite.fr</span><br>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span class="vh-attr">DocumentRoot</span>&nbsp;&nbsp;&nbsp;<span class="vh-val">/var/www/monsite.fr/html</span><br>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span class="vh-attr">ErrorLog</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="vh-val">${APACHE_LOG_DIR}/monsite-error.log</span><br>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span class="vh-attr">CustomLog</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="vh-val">${APACHE_LOG_DIR}/monsite-access.log combined</span><br>
+          <span class="vh-tag">&lt;/VirtualHost&gt;</span>
+        </div>
+        <div class="alert info">
+          <span class="alert-icon">💡</span>
+          <p>Remplacez <strong>monsite.fr</strong> par votre nom de domaine réel ou une IP locale pour les tests.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header"><div class="step-num">03</div><h2>Activer le site<small>Enable Site</small></h2></div>
+      <div class="step-body">
+        <div class="code-block">
+          <span class="code-label">Terminal</span>
+          <span class="line"><span class="comment"># Activer le VirtualHost</span></span>
+          <span class="line"><span class="root">#</span>a2ensite monsite.fr.conf</span>
+          <span class="line"> </span>
+          <span class="line"><span class="comment"># Désactiver le site par défaut (optionnel)</span></span>
+          <span class="line"><span class="root">#</span>a2dissite 000-default.conf</span>
+          <span class="line"> </span>
+          <span class="line"><span class="comment"># Vérifier la configuration Apache</span></span>
+          <span class="line"><span class="root">#</span>apache2ctl configtest</span>
+          <span class="line"> </span>
+          <span class="line"><span class="comment"># Recharger Apache</span></span>
+          <span class="line"><span class="root">#</span>systemctl reload apache2</span>
+        </div>
+        <div class="alert ok">
+          <span class="alert-icon">✅</span>
+          <p>Votre site est actif. Testez-le en tapant <code>http://monsite.fr</code> dans un navigateur (ou en ajoutant l'IP dans votre fichier <code>/etc/hosts</code> pour un test local).</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ===== SSL / HTTPS ===== -->
+  <div class="panel" id="panel-ssl">
+
+    <div class="version-tag">
+      <span class="dot"></span>
+      <strong>HTTPS</strong> — Certificat SSL gratuit avec Let's Encrypt
+    </div>
+
+    <div class="step">
+      <div class="step-header"><div class="step-num">01</div><h2>Installer Certbot<small>Let's Encrypt</small></h2></div>
+      <div class="step-body">
+        <div class="code-block">
+          <span class="code-label">Terminal</span>
+          <span class="line"><span class="comment"># Installer Certbot et le plugin Apache</span></span>
+          <span class="line"><span class="root">#</span>apt install certbot python3-certbot-apache -y</span>
+        </div>
+        <div class="alert warn">
+          <span class="alert-icon">⚠️</span>
+          <p>Votre <strong>nom de domaine doit pointer vers votre serveur</strong> (enregistrement DNS A configuré) avant de générer le certificat.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header"><div class="step-num">02</div><h2>Générer le certificat SSL<small>Certificate</small></h2></div>
+      <div class="step-body">
+        <div class="code-block">
+          <span class="code-label">Terminal</span>
+          <span class="line"><span class="comment"># Générer et installer le certificat automatiquement</span></span>
+          <span class="line"><span class="root">#</span>certbot --apache -d monsite.fr -d www.monsite.fr</span>
+        </div>
+        <ol class="steps-list">
+          <li><div class="sn">1</div><span>Entrez votre <strong>adresse e-mail</strong> pour les notifications d'expiration.</span></li>
+          <li><div class="sn">2</div><span>Acceptez les <strong>conditions d'utilisation</strong> de Let's Encrypt.</span></li>
+          <li><div class="sn">3</div><span>Choisissez de <strong>rediriger HTTP vers HTTPS</strong> (option recommandée).</span></li>
+        </ol>
+        <div class="alert ok">
+          <span class="alert-icon">✅</span>
+          <p>Certbot configure Apache et active HTTPS automatiquement. Votre site est maintenant accessible en <code>https://monsite.fr</code>.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-header"><div class="step-num">03</div><h2>Renouvellement automatique<small>Auto-Renewal</small></h2></div>
+      <div class="step-body">
+        <div class="code-block">
+          <span class="code-label">Terminal</span>
+          <span class="line"><span class="comment"># Tester le renouvellement automatique</span></span>
+          <span class="line"><span class="root">#</span>certbot renew --dry-run</span>
+          <span class="line"> </span>
+          <span class="line"><span class="comment"># Le renouvellement est automatique via systemd timer</span></span>
+          <span class="line"><span class="root">#</span>systemctl status certbot.timer</span>
+        </div>
+        <div class="alert info">
+          <span class="alert-icon">💡</span>
+          <p>Les certificats Let's Encrypt sont valables <strong>90 jours</strong>. Certbot renouvelle automatiquement avant expiration grâce à un timer systemd.</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<footer>
+  <p>Apache2 &nbsp;·&nbsp; <a href="https://httpd.apache.org/docs/2.4/" target="_blank">Documentation officielle</a> &nbsp;·&nbsp; <a href="https://certbot.eff.org/" target="_blank">Certbot / Let's Encrypt</a></p>
+</footer>
+
+<script>
+  window.addEventListener('scroll', () => {
+    const st = document.documentElement.scrollTop;
+    const sh = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+    document.getElementById('pb').style.width = (st / sh * 100) + '%';
+  });
+
+  function switchTab(id) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    event.target.classList.add('active');
+    document.getElementById('panel-' + id).classList.add('active');
+    document.querySelectorAll('#panel-' + id + ' .step').forEach((s, i) => {
+      s.classList.remove('visible');
+      setTimeout(() => s.classList.add('visible'), i * 80);
+    });
+  }
+
+  const obs = new IntersectionObserver(
+    e => e.forEach(x => { if (x.isIntersecting) x.target.classList.add('visible'); }),
+    { threshold: 0.1 }
+  );
+  document.querySelectorAll('.step').forEach(s => obs.observe(s));
+</script>
+</body>
+</html>
